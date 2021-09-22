@@ -14,7 +14,7 @@ services:
     restart: on-failure
     build: ./VeloEpicurien
     ports: [ 80:5000 ]
-    links: [ mongodb ]
+    links: [ mongodb, neo4j ]
     command: python3 -m flask run --host=0.0.0.0
     tty: true
     stdin_open: true
