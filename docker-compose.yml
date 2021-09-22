@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  mongodb:
+    restart: on-failure
+    build: ./MongoDB
+    ports: [ 27017:27017 ]
+    volumes: [ ./MongoDB/db:/data/db ]
+  neo4j:
+    restart: on-failure
+    build: ./Neo4J
+    ports: [ 7474:7474 ]
+    volumes: [ ./Neo4J/data:/data, ./Neo4J/conf:/conf ]
+  flask:
+    restart: on-failure
+    build: ./VeloEpicurien
+    ports: [ 80:5000 ]
+    links: [ mongodb, neo4j ]
+    command: python3 -m flask run --host=0.0.0.0
+    tty: true
+    stdin_open: true
