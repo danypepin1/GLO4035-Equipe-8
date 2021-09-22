@@ -128,8 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 # User-specific stuff
+.idea
 .idea/**/workspace.xml
-.idea/**/tasks.xml
+.idea/**/tasks.xm
 .idea/**/usage.statistics.xml
 .idea/**/dictionaries
 .idea/**/shelf
