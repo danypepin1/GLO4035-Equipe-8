@@ -1,6 +1,6 @@
 from flask import Flask
 
-from VeloEpicurien.routes import views
+from .routes import views
 
 
 def create_app():
