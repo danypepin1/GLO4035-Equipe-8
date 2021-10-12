@@ -18,7 +18,7 @@ def get_json():
 
 
 @views.route('/restaurants', methods=['GET', 'DELETE'])
-def cities():
+def restaurants():
     if request.method == 'GET':
         return jsonify(
             list(db.restaurants.find(projection={"_id": False}))
