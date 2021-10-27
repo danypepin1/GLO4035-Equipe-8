@@ -52,7 +52,7 @@ def transformed_date():
     if request.method == 'GET':
         return jsonify(
             {
-                'Restaurants': list(db.restaurants.aggregate([{'$unwind': '$categories'},
+                'restaurants': list(db.restaurants.aggregate([{'$unwind': '$categories'},
                                                               {'$group': {'_id': '$categories.title',
                                                                           'count': {'$sum': 1}}},
                                                               {'$project': {'type': '$_id', 'count': 1, '_id': 0}}, {
