@@ -61,5 +61,5 @@ def transformed_date():
             }
         ), 200
     elif request.method == 'DELETE':
-        db.transformed_date.drop()
+        db.transformed_data.drop()
         return '', 200
