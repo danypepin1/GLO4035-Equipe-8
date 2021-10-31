@@ -3,7 +3,7 @@ from pymongo import MongoClient
 
 from .import_data import import_datasets_if_needed
 
-client = MongoClient('mongodb://localhost:27017')
+client = MongoClient('mongodb://mongodb:27017')
 db = client.test
 import_datasets_if_needed(db)
 
@@ -44,4 +44,31 @@ def segments():
         ), 200
     elif request.method == 'DELETE':
         db.segments.drop()
+        return '', 200
+
+
+def transformed_restaurant_data():
+    data = list(db.restaurants.aggregate([{'$unwind': '$categories'},
+                                          {'$group': {'_id': '$categories.title',
+                                                      'count': {'$sum': 1}}},
+                                          {'$project': {'type': '$_id', 'count': 1, '_id': 0}}]))
+    p = {}
+    for d in data:
+        p.update({d['type']: d['count']})
+    return p
+
+
+@views.route('/transformed_data', methods=['GET', 'DELETE'])
+def transformed_data():
+    if request.method == 'GET':
+        return jsonify(
+            {
+                'restaurants': transformed_restaurant_data(),
+                'longueurCyclable': list(db.segments.aggregate([{'$group': {'_id': 'null',
+                                                                            'total': {'$sum': '$properties.LONGUEUR'}}}]
+                                                               ))[0]['total']
+            }
+        ), 200
+    elif request.method == 'DELETE':
+        db.transformed_data.drop()
         return '', 200
