@@ -47,18 +47,26 @@ def segments():
         return '', 200
 
 
+def transformed_restaurant_data():
+    data = list(db.restaurants.aggregate([{'$unwind': '$categories'},
+                                          {'$group': {'_id': '$categories.title',
+                                                      'count': {'$sum': 1}}},
+                                          {'$project': {'type': '$_id', 'count': 1, '_id': 0}}]))
+    output = {}
+    p = {}
+    for d in data:
+        p.update({d['type']: d['count']})
+    output.update({'restaurants': p})
+    return output
+
+
 @views.route('/transformed_data', methods=['GET', 'DELETE'])
 def transformed_date():
     if request.method == 'GET':
         return jsonify(
-            {
-                'restaurants': list(db.restaurants.aggregate([{'$unwind': '$categories'},
-                                                              {'$group': {'_id': '$categories.title',
-                                                                          'count': {'$sum': 1}}},
-                                                              {'$project': {'type': '$_id', 'count': 1, '_id': 0}}, {
-                                                                  '$replaceRoot': {'newRoot': {'$arrayToObject': [
-                                                                      [{'k': '$type', 'v': '$count'}]]}}}]))
-            }
+
+                transformed_restaurant_data()
+
         ), 200
     elif request.method == 'DELETE':
         db.transformed_data.drop()
