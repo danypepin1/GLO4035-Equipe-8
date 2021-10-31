@@ -52,20 +52,18 @@ def transformed_restaurant_data():
                                           {'$group': {'_id': '$categories.title',
                                                       'count': {'$sum': 1}}},
                                           {'$project': {'type': '$_id', 'count': 1, '_id': 0}}]))
-    output = {}
     p = {}
     for d in data:
         p.update({d['type']: d['count']})
-    output.update({'restaurants': p})
-    return output
+    return p
 
 
 @views.route('/transformed_data', methods=['GET', 'DELETE'])
 def transformed_data():
     if request.method == 'GET':
         return jsonify(
-
-            transformed_restaurant_data(), {
+            {
+                'restaurants': transformed_restaurant_data(),
                 'longueurCyclable': list(db.segments.aggregate([{'$group': {'_id': 'null',
                                                                             'total': {'$sum': '$properties.LONGUEUR'}}}]
                                                                ))[0]['total']
