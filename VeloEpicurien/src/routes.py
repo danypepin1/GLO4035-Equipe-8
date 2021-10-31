@@ -3,7 +3,7 @@ from pymongo import MongoClient
 
 from .import_data import import_datasets_if_needed
 
-client = MongoClient('mongodb://localhost:27017')
+client = MongoClient('mongodb://mongodb:27017')
 db = client.test
 import_datasets_if_needed(db)
 
@@ -61,12 +61,15 @@ def transformed_restaurant_data():
 
 
 @views.route('/transformed_data', methods=['GET', 'DELETE'])
-def transformed_date():
+def transformed_data():
     if request.method == 'GET':
         return jsonify(
 
-                transformed_restaurant_data()
-
+            transformed_restaurant_data(), {
+                'longueurCyclable': list(db.segments.aggregate([{'$group': {'_id': 'null',
+                                                                            'total': {'$sum': '$properties.LONGUEUR'}}}]
+                                                               ))[0]['total']
+            }
         ), 200
     elif request.method == 'DELETE':
         db.transformed_data.drop()
