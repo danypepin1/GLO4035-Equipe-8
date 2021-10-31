@@ -3,7 +3,7 @@ from pymongo import MongoClient
 
 from .import_data import import_datasets_if_needed
 
-client = MongoClient('mongodb://localhost:27017')
+client = MongoClient('mongodb://mongodb:27017')
 db = client.test
 import_datasets_if_needed(db)
 
@@ -57,7 +57,10 @@ def transformed_date():
                                                                           'count': {'$sum': 1}}},
                                                               {'$project': {'type': '$_id', 'count': 1, '_id': 0}}, {
                                                                   '$replaceRoot': {'newRoot': {'$arrayToObject': [
-                                                                      [{'k': '$type', 'v': '$count'}]]}}}]))
+                                                                      [{'k': '$type', 'v': '$count'}]]}}}])),
+                'longueurCyclable': list(db.segments.aggregate([{'$group': {'_id': 'null',
+                                                                            'total': {'$sum': '$properties.LONGUEUR'}}}]
+                                                               ))[0]['total']
             }
         ), 200
     elif request.method == 'DELETE':
