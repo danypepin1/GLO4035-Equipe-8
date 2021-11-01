@@ -1,6 +1,8 @@
-from pymongo import MongoClient
+import os
 import sys
 import json
+
+from pymongo import MongoClient
 
 
 def extract_restaurants(db, path):
@@ -26,7 +28,7 @@ def generate_types_view(db):
 
 
 def main(path):
-    client = MongoClient('mongodb://mongodb:27017')
+    client = MongoClient(os.environ.get('MONGO_URI'))
     db = client.test
     extract_restaurants(db, path)
     generate_types_view(db)

@@ -1,7 +1,9 @@
+import os
+
 from flask import Blueprint, jsonify
 from pymongo import MongoClient
 
-client = MongoClient('mongodb://mongodb:27017')
+client = MongoClient(os.environ.get('MONGO_URI'))
 db = client.test
 
 views = Blueprint('views', __name__)
