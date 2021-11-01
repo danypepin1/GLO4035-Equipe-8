@@ -1,11 +1,8 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from pymongo import MongoClient
-
-from .import_data import import_datasets_if_needed
 
 client = MongoClient('mongodb://mongodb:27017')
 db = client.test
-import_datasets_if_needed(db)
 
 views = Blueprint('views', __name__)
 
@@ -25,50 +22,42 @@ def extracted_data():
     })
 
 
-@views.route('/restaurants', methods=['GET', 'DELETE'])
+@views.route('/restaurants')
 def restaurants():
-    if request.method == 'GET':
-        return jsonify(
-            list(db.restaurants.find(projection={"_id": False}))
-        ), 200
-    elif request.method == 'DELETE':
-        db.restaurants.drop()
-        return '', 200
+    return jsonify(
+        list(db.restaurants.find(projection={"_id": False}))
+    ), 200
 
 
-@views.route('/segments', methods=['GET', 'DELETE'])
+@views.route('/segments')
 def segments():
-    if request.method == 'GET':
-        return jsonify(
-            list(db.segments.find(projection={"_id": False}))
-        ), 200
-    elif request.method == 'DELETE':
-        db.segments.drop()
-        return '', 200
+    return jsonify(
+        list(db.segments.find(projection={"_id": False}))
+    ), 200
 
 
-def transformed_restaurant_data():
-    data = list(db.restaurants.aggregate([{'$unwind': '$categories'},
-                                          {'$group': {'_id': '$categories.title',
-                                                      'count': {'$sum': 1}}},
-                                          {'$project': {'type': '$_id', 'count': 1, '_id': 0}}]))
-    p = {}
-    for d in data:
-        p.update({d['type']: d['count']})
-    return p
-
-
-@views.route('/transformed_data', methods=['GET', 'DELETE'])
+@views.route('/transformed_data')
 def transformed_data():
-    if request.method == 'GET':
-        return jsonify(
-            {
-                'restaurants': transformed_restaurant_data(),
-                'longueurCyclable': list(db.segments.aggregate([{'$group': {'_id': 'null',
-                                                                            'total': {'$sum': '$properties.LONGUEUR'}}}]
-                                                               ))[0]['total']
-            }
-        ), 200
-    elif request.method == 'DELETE':
-        db.transformed_data.drop()
-        return '', 200
+    return jsonify({
+            'restaurants': _fetch_restaurant_types(),
+            'longueurCyclable': _fetch_segments_length()
+        }
+    ), 200
+
+
+def _fetch_restaurant_types():
+    restaurant_types = list(db.restaurant_types_view.find())
+    formatted_restaurant_types = {}
+    for restaurant_type in restaurant_types:
+        formatted_restaurant_types[restaurant_type['title']] = restaurant_type['count']
+    return formatted_restaurant_types
+
+
+def _fetch_segments_length():
+    cursor = list(db.segments.aggregate([
+            {'$group': {'_id': 'null', 'total': {'$sum': '$properties.LONGUEUR'}}}
+    ]))
+    if len(cursor) > 0:
+        return 0. + cursor[0]['total']
+    else:
+        return 0.
