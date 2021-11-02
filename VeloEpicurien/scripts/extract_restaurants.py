@@ -3,19 +3,20 @@ import sys
 import json
 
 from pymongo import MongoClient
+from pymongo.errors import BulkWriteError
 
 
 def extract_restaurants(db, path):
     print('Extracting restaurants...')
     with open(path) as f:
-        old_docs = db.restaurants.find()
-        new_docs = [
-            new_doc for new_doc in json.load(f)
-            if not any(old_doc for old_doc in old_docs if old_doc['id'] == new_doc['id'])
-        ]
-        if len(new_docs) > 0:
-            db.restaurants.insert_many(new_docs)
-        print(f'Extracted {len(new_docs)} restaurants.')
+        restaurants = json.load(f)
+        db.restaurants.create_index('id', unique=True)
+        try:
+            db.restaurants.insert_many(restaurants, ordered=False)
+            print(f'Extracted {len(restaurants)} restaurants.')
+        except BulkWriteError as e:
+            print(f'Ignored {len(e.details["writeErrors"])} duplicates.')
+            print(f'Extracted {len(restaurants) - len(e.details["writeErrors"])} restaurants.')
 
 
 def generate_restaurants_view(db):
