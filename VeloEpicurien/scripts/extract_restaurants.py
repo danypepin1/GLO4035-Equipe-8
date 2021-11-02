@@ -8,18 +8,19 @@ from pymongo import MongoClient
 def extract_restaurants(db, path):
     print('Extracting restaurants...')
     with open(path) as f:
-        old_restaurants = db.restaurants.find()
-        new_restaurants = [
-            new_restaurant for new_restaurant in json.load(f)
-            if not any(old_restaurant for old_restaurant in old_restaurants if old_restaurant.id == new_restaurant.id)
+        old_docs = db.restaurants.find()
+        new_docs = [
+            new_doc for new_doc in json.load(f)
+            if not any(old_doc for old_doc in old_docs if old_doc['id'] == new_doc['id'])
         ]
-        db.restaurants.insert_many(new_restaurants)
-        print(f'Extracted {len(new_restaurants)} restaurants.')
+        if len(new_docs) > 0:
+            db.restaurants.insert_many(new_docs)
+        print(f'Extracted {len(new_docs)} restaurants.')
 
 
 def generate_restaurants_view(db):
     print('Generating restaurants view...')
-    restaurants = db.restaurants.aggregate({
+    restaurants = db.restaurants.aggregate([{
         '$project': {
             '_id': False,
             'id': True,
@@ -29,8 +30,8 @@ def generate_restaurants_view(db):
                 'type': 'Point',
                 'coordinates': ['$coordinates.longitude', '$coordinates.latitude']
             }
-        }}
-    )
+        }
+    }])
     db.restaurants_view.drop()
     db.restaurants_view.insert_many(restaurants)
     print('Finished generating restaurants view.')

@@ -19,23 +19,9 @@ def city():
 @views.route('/extracted_data')
 def extracted_data():
     return jsonify({
-        'nbRestaurants': db.restaurants.find().count(),
-        'nbSegments': db.segments.find().count()
+        'nbRestaurants': db.restaurants_view.find().count(),
+        'nbSegments': db.segments_view.find().count()
     })
-
-
-@views.route('/restaurants')
-def restaurants():
-    return jsonify(
-        list(db.restaurants.find(projection={"_id": False}))
-    ), 200
-
-
-@views.route('/segments')
-def segments():
-    return jsonify(
-        list(db.segments.find(projection={"_id": False}))
-    ), 200
 
 
 @views.route('/transformed_data')
@@ -56,7 +42,7 @@ def _fetch_restaurant_types():
 
 
 def _fetch_segments_length():
-    cursor = list(db.segments.aggregate([
+    cursor = list(db.segments_view.aggregate([
             {'$group': {'_id': 'null', 'total': {'$sum': '$properties.LONGUEUR'}}}
     ]))
     if len(cursor) > 0:

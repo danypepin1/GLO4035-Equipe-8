@@ -15,7 +15,7 @@ def extract_segments(db, path):
 
 def generate_segments_view(db):
     print('Generating segments view...')
-    segments = db.segments.find(project={
+    segments = db.segments.find(projection={
         '_id': False,
         'properties.LONGUEUR': True,
         'geometry': True
