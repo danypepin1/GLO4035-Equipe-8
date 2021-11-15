@@ -2,8 +2,7 @@ import os
 import sys
 import json
 import hashlib
-
-from pymongo import MongoClient
+from pymongo import MongoClient, GEOSPHERE
 from pymongo.errors import BulkWriteError
 
 
@@ -34,6 +33,7 @@ def generate_segments_view(db):
         'geometry': True
     })
     db.segments_view.drop()
+    db.segments_view.create_index([('geometry', GEOSPHERE)])
     db.segments_view.insert_many(segments)
     print('Finished generating segments view.')
 
