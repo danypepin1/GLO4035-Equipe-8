@@ -4,6 +4,7 @@ import json
 import hashlib
 from pymongo import MongoClient, GEOSPHERE
 from pymongo.errors import BulkWriteError
+from scripts.generate_cycling_graph import generate_cycling_graph
 
 
 def extract_segments(db, path):
@@ -30,6 +31,7 @@ def generate_segments_view(db):
     segments = db.segments.find(projection={
         '_id': False,
         'properties.LONGUEUR': True,
+        'properties.NBR_VOIE': True,
         'geometry': True
     })
     db.segments_view.drop()
@@ -43,6 +45,7 @@ def main(path):
     db = client.test
     extract_segments(db, path)
     generate_segments_view(db)
+    generate_cycling_graph(db)
 
 
 if __name__ == '__main__':
