@@ -27,10 +27,16 @@ def extracted_data():
 @views.route('/transformed_data')
 def transformed_data():
     return jsonify({
-            'restaurants': _fetch_restaurant_types(),
-            'longueurCyclable': _fetch_segments_length()
-        }
+        'restaurants': _fetch_restaurant_types(),
+        'longueurCyclable': _fetch_segments_length()
+    }
     ), 200
+
+
+@views.route('/type')
+def get_restaurant_types():
+    restaurant_types = list(db.restaurant_types_view.distinct('title'))
+    return jsonify(restaurant_types), 200
 
 
 def _fetch_restaurant_types():
@@ -43,7 +49,7 @@ def _fetch_restaurant_types():
 
 def _fetch_segments_length():
     cursor = list(db.segments_view.aggregate([
-            {'$group': {'_id': 'null', 'total': {'$sum': '$properties.LONGUEUR'}}}
+        {'$group': {'_id': 'null', 'total': {'$sum': '$properties.LONGUEUR'}}}
     ]))
     if len(cursor) > 0:
         return 0. + cursor[0]['total']
