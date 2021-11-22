@@ -13,7 +13,7 @@ def extract_restaurants(db, path):
         db.restaurants.create_index('id', unique=True)
         try:
             db.restaurants.insert_many(restaurants, ordered=False)
-            print(f'Extracted {len(restaurants)} restaurants.')
+            print(f'- Extracted {len(restaurants)} restaurants.')
         except BulkWriteError as e:
             print(f'- Ignored {len(e.details["writeErrors"])} duplicates.')
             print(f'- Extracted {len(restaurants) - len(e.details["writeErrors"])} restaurants.')
