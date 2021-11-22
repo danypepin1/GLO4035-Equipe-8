@@ -1,4 +1,5 @@
 import os
+from geopy.distance import distance
 from py2neo import Graph, Node, Relationship, Subgraph
 
 BIDIRECTIONAL = 2
@@ -52,4 +53,7 @@ def _build_edges(mongodb, nodes):
 
 
 def _build_edge(nodes, origin, destination):
-    return Relationship(nodes[str(origin)], CONNECTS_TO, nodes[str(destination)])
+    origin_point = (origin[1], origin[0])
+    destination_point = (destination[1], destination[0])
+    length = distance(origin_point, destination_point).meters
+    return Relationship(nodes[str(origin)], CONNECTS_TO, nodes[str(destination)], length=length)
