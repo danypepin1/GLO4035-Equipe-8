@@ -1,19 +1,26 @@
 import os
+from geopy.distance import distance
 from py2neo import Graph, Node, Relationship, Subgraph
 
 BIDIRECTIONAL = 2
 CONNECTS_TO = 'connects_to'
-POINT = 'Point'
+JUNCTION = 'Junction'
+RESTAURANT = 'Restaurant'
 
 
 def generate_cycling_graph(mongodb):
-    print('Generating cycling graph...')
-    graph = _connect_to_graph()
-    graph.delete_all()
-    transaction = graph.begin()
-    _generate_cycling_graph(mongodb, transaction)
-    graph.commit(transaction)
-    print('Finished generating cycling graph.')
+    if can_generate_cycling_graph(mongodb):
+        print('Generating cycling graph...')
+        graph = _connect_to_graph()
+        graph.delete_all()
+        transaction = graph.begin()
+        _generate_cycling_graph(mongodb, transaction)
+        graph.commit(transaction)
+        print('Finished generating cycling graph.')
+
+
+def can_generate_cycling_graph(mongodb):
+    return {'restaurants_view', 'segments_view', 'junctions_view'}.issubset(mongodb.list_collection_names())
 
 
 def _connect_to_graph():
@@ -25,31 +32,83 @@ def _connect_to_graph():
 
 
 def _generate_cycling_graph(mongodb, transaction):
-    nodes = _build_nodes(mongodb)
-    edges = _build_edges(mongodb, nodes)
-    transaction.create(Subgraph(nodes=nodes.values(), relationships=edges))
+    print('- Building restaurant nodes...')
+    restaurants = _build_restaurant_nodes(mongodb)
+    print('- Building junction nodes...')
+    junctions = _build_junction_nodes(mongodb)
+    print('- Building restaurant path edges...')
+    restaurant_paths = _build_restaurant_path_edges(mongodb, restaurants, junctions)
+    print('- Building path edges...')
+    paths = _build_path_edges(mongodb, junctions)
+    print('- Building subgraph...')
+    transaction.create(Subgraph(
+        nodes=list(junctions.values()) + restaurants,
+        relationships=paths + restaurant_paths
+    ))
 
 
-def _build_nodes(mongodb):
-    nodes = {}
-    for segment in mongodb.segments_view.find(projection={'_id': False}):
-        points = segment['geometry']['coordinates'][0]
-        for point in points:
-            if str(point) not in nodes:
-                nodes[str(point)] = Node(POINT, x=point[0], y=point[1])
-    return nodes
+def _build_restaurant_nodes(mongodb):
+    return [
+        Node(
+            RESTAURANT,
+            long=restaurant['geometry']['coordinates'][0],
+            lat=restaurant['geometry']['coordinates'][1],
+            name=restaurant['name'],
+            types=[category['title'] for category in restaurant['categories']]
+        )
+        for restaurant in mongodb.restaurants_view.find()
+    ]
 
 
-def _build_edges(mongodb, nodes):
-    edges = []
-    for segment in mongodb.segments_view.find(projection={'_id': False}):
+def _build_junction_nodes(mongodb):
+    return {
+        str(point): Node(JUNCTION, long=point[0], lat=point[1])
+        for segment in mongodb.segments_view.find()
+        for point in segment['geometry']['coordinates'][0]
+    }
+
+
+def _build_restaurant_path_edges(mongodb, restaurants, junctions):
+    restaurant_paths = []
+    for restaurant_node in restaurants:
+        junction_node, length = _find_closest_junction(mongodb, restaurant_node, junctions)
+        restaurant_paths += _build_restaurant_paths(restaurant_node, junction_node, length)
+    return restaurant_paths
+
+
+def _find_closest_junction(mongodb, restaurant, junctions):
+    closest_junction = mongodb.junctions_view.aggregate([{
+        '$geoNear': {
+            'near': {'type': 'Point', 'coordinates': [restaurant['long'], restaurant['lat']]},
+            'distanceField': 'distance'
+        }},
+        {'$limit': 1}
+    ]).next()
+    coordinates = closest_junction['geometry']['coordinates']
+    return junctions[str([coordinates[0], coordinates[1]])], closest_junction['distance']
+
+
+def _build_restaurant_paths(restaurant, junction, length):
+    return [
+        Relationship(restaurant, CONNECTS_TO, junction, length=length),
+        Relationship(junction, CONNECTS_TO, restaurant, length=length)
+    ]
+
+
+def _build_path_edges(mongodb, junctions):
+    paths = []
+    for segment in mongodb.segments_view.find():
         points = segment['geometry']['coordinates'][0]
         for i in range(len(points) - 1):
-            edges.append(_build_edge(nodes, points[i], points[i + 1]))
+            paths.append(_build_path(junctions, points[i], points[i + 1]))
             if segment['properties']['NBR_VOIE'] == BIDIRECTIONAL:
-                edges.append(_build_edge(nodes, points[i + 1], points[i]))
-    return edges
+                paths.append(_build_path(junctions, points[i + 1], points[i]))
+    return paths
 
 
-def _build_edge(nodes, origin, destination):
-    return Relationship(nodes[str(origin)], CONNECTS_TO, nodes[str(destination)])
+def _build_path(junctions, origin, destination):
+    length = distance(
+        (origin[1], origin[0]),
+        (destination[1], destination[0])
+    ).meters
+    return Relationship(junctions[str(origin)], CONNECTS_TO, junctions[str(destination)], length=length)

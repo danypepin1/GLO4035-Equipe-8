@@ -16,10 +16,10 @@ def extract_segments(db, path):
         db.segments.create_index('hashcode', unique=True)
         try:
             db.segments.insert_many(segments, ordered=False)
-            print(f'Extracted {len(segments)} segments.')
+            print(f'- Extracted {len(segments)} segments.')
         except BulkWriteError as e:
-            print(f'Ignored {len(e.details["writeErrors"])} duplicates.')
-            print(f'Extracted {len(segments) - len(e.details["writeErrors"])} segments.')
+            print(f'- Ignored {len(e.details["writeErrors"])} duplicates.')
+            print(f'- Extracted {len(segments) - len(e.details["writeErrors"])} segments.')
 
 
 def _encode_string(input_string):
@@ -37,7 +37,22 @@ def generate_segments_view(db):
     db.segments_view.drop()
     db.segments_view.create_index([('geometry', GEOSPHERE)])
     db.segments_view.insert_many(segments)
-    print('Finished generating segments view.')
+
+
+def generate_junctions_view(db):
+    print('Generating junctions view...')
+    junctions = [
+        {'geometry': {'type': 'Point', 'coordinates': point}}
+        for segment in db.segments.find(projection={'_id': False, 'geometry': True})
+        for point in segment['geometry']['coordinates'][0]
+    ]
+    db.junctions_view.drop()
+    db.junctions_view.create_index([('geometry', GEOSPHERE)])
+    db.junctions_view.create_index('geometry.coordinates', unique=True)
+    try:
+        db.junctions_view.insert_many(junctions, ordered=False)
+    except BulkWriteError:
+        pass
 
 
 def main(path):
@@ -45,6 +60,7 @@ def main(path):
     db = client.test
     extract_segments(db, path)
     generate_segments_view(db)
+    generate_junctions_view(db)
     generate_cycling_graph(db)
 
 

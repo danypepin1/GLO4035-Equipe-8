@@ -1,9 +1,9 @@
 import os
 import sys
 import json
-
 from pymongo import MongoClient
 from pymongo.errors import BulkWriteError
+from scripts.generate_cycling_graph import generate_cycling_graph
 
 
 def extract_restaurants(db, path):
@@ -13,10 +13,10 @@ def extract_restaurants(db, path):
         db.restaurants.create_index('id', unique=True)
         try:
             db.restaurants.insert_many(restaurants, ordered=False)
-            print(f'Extracted {len(restaurants)} restaurants.')
+            print(f'- Extracted {len(restaurants)} restaurants.')
         except BulkWriteError as e:
-            print(f'Ignored {len(e.details["writeErrors"])} duplicates.')
-            print(f'Extracted {len(restaurants) - len(e.details["writeErrors"])} restaurants.')
+            print(f'- Ignored {len(e.details["writeErrors"])} duplicates.')
+            print(f'- Extracted {len(restaurants) - len(e.details["writeErrors"])} restaurants.')
 
 
 def generate_restaurants_view(db):
@@ -35,7 +35,6 @@ def generate_restaurants_view(db):
     }])
     db.restaurants_view.drop()
     db.restaurants_view.insert_many(restaurants)
-    print('Finished generating restaurants view.')
 
 
 def generate_types_view(db):
@@ -49,7 +48,6 @@ def generate_types_view(db):
     )
     db.restaurant_types_view.drop()
     db.restaurant_types_view.insert_many(restaurant_types)
-    print('Finished generating types view.')
 
 
 def main(path):
@@ -58,6 +56,7 @@ def main(path):
     extract_restaurants(db, path)
     generate_restaurants_view(db)
     generate_types_view(db)
+    generate_cycling_graph(db)
 
 
 if __name__ == '__main__':
