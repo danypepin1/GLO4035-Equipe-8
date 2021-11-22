@@ -37,7 +37,22 @@ def generate_segments_view(db):
     db.segments_view.drop()
     db.segments_view.create_index([('geometry', GEOSPHERE)])
     db.segments_view.insert_many(segments)
-    print('Finished generating segments view.')
+
+
+def generate_intersections_view(db):
+    print('Generating intersections view...')
+    intersections = [
+        {'geometry': {'type': 'Point', 'coordinates': point}}
+        for segment in db.segments.find(projection={'_id': False, 'geometry': True})
+        for point in segment['geometry']['coordinates'][0]
+    ]
+    db.intersections_view.drop()
+    db.intersections_view.create_index([('geometry', GEOSPHERE)])
+    db.intersections_view.create_index('geometry.coordinates', unique=True)
+    try:
+        db.intersections_view.insert_many(intersections, ordered=False)
+    except BulkWriteError:
+        pass
 
 
 def main(path):
@@ -45,6 +60,7 @@ def main(path):
     db = client.test
     extract_segments(db, path)
     generate_segments_view(db)
+    generate_intersections_view(db)
     generate_cycling_graph(db)
 
 

@@ -35,7 +35,6 @@ def generate_restaurants_view(db):
     }])
     db.restaurants_view.drop()
     db.restaurants_view.insert_many(restaurants)
-    print('Finished generating restaurants view.')
 
 
 def generate_types_view(db):
@@ -49,7 +48,6 @@ def generate_types_view(db):
     )
     db.restaurant_types_view.drop()
     db.restaurant_types_view.insert_many(restaurant_types)
-    print('Finished generating types view.')
 
 
 def main(path):
