@@ -1,9 +1,9 @@
 import os
 import sys
 import json
-
 from pymongo import MongoClient
 from pymongo.errors import BulkWriteError
+from scripts.generate_cycling_graph import generate_cycling_graph
 
 
 def extract_restaurants(db, path):
@@ -58,6 +58,7 @@ def main(path):
     extract_restaurants(db, path)
     generate_restaurants_view(db)
     generate_types_view(db)
+    generate_cycling_graph(db)
 
 
 if __name__ == '__main__':
