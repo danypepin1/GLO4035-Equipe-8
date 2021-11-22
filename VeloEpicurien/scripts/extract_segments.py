@@ -18,8 +18,8 @@ def extract_segments(db, path):
             db.segments.insert_many(segments, ordered=False)
             print(f'Extracted {len(segments)} segments.')
         except BulkWriteError as e:
-            print(f'Ignored {len(e.details["writeErrors"])} duplicates.')
-            print(f'Extracted {len(segments) - len(e.details["writeErrors"])} segments.')
+            print(f'- Ignored {len(e.details["writeErrors"])} duplicates.')
+            print(f'- Extracted {len(segments) - len(e.details["writeErrors"])} segments.')
 
 
 def _encode_string(input_string):

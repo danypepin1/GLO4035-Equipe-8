@@ -27,13 +27,17 @@ def _connect_to_graph():
 
 
 def _generate_cycling_graph(mongodb, transaction):
-    restaurants = _build_restaurants(mongodb)
-    intersections = _build_intersections(mongodb)
-    paths = _build_paths(mongodb, intersections)
+    print('- Building restaurant nodes...')
+    restaurants = _build_restaurant_nodes(mongodb)
+    print('- Building intersection nodes...')
+    intersections = _build_intersection_nodes(mongodb)
+    print('- Building path edges...')
+    paths = _build_path_edges(mongodb, intersections)
+    print('- Building subgraph...')
     transaction.create(Subgraph(nodes=list(intersections.values()) + restaurants, relationships=paths))
 
 
-def _build_restaurants(mongodb):
+def _build_restaurant_nodes(mongodb):
     restaurants = []
     for restaurant in mongodb.restaurants_view.find():
         restaurants.append(Node(
@@ -46,7 +50,7 @@ def _build_restaurants(mongodb):
     return restaurants
 
 
-def _build_intersections(mongodb):
+def _build_intersection_nodes(mongodb):
     intersections = {}
     for segment in mongodb.segments_view.find():
         points = segment['geometry']['coordinates'][0]
@@ -56,7 +60,7 @@ def _build_intersections(mongodb):
     return intersections
 
 
-def _build_paths(mongodb, intersections):
+def _build_path_edges(mongodb, intersections):
     paths = []
     for segment in mongodb.segments_view.find():
         points = segment['geometry']['coordinates'][0]
