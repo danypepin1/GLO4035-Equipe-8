@@ -39,11 +39,12 @@ def get_restaurant_types():
     restaurant_types = list(db.restaurant_types_view.distinct('title'))
     return jsonify(restaurant_types), 200
 
+
 @views.route('/readme')
 def get_readme():
-    with open('requete-readme.md') as f:
+    with open('requete-readme.md', encoding="utf-8") as f:
         readme = f.read()
-    return markdown.markdown(readme), 200
+    return markdown.markdown(readme, extensions=['fenced_code']), 200
 
 def _fetch_restaurant_types():
     restaurant_types = list(db.restaurant_types_view.find())
