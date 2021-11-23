@@ -40,11 +40,13 @@ def _generate_cycling_graph(mongodb, transaction):
     restaurant_paths = _build_restaurant_path_edges(mongodb, restaurants, junctions)
     print('- Building path edges...')
     paths = _build_path_edges(mongodb, junctions)
-    print('- Building subgraph...')
+    print('- Creating subgraph...')
     transaction.create(Subgraph(
         nodes=list(junctions.values()) + restaurants,
         relationships=paths + restaurant_paths
     ))
+    print('- Creating shortest path edges...')
+    _build_shortest_path_edges(transaction)
 
 
 def _build_restaurant_nodes(mongodb):
@@ -112,3 +114,13 @@ def _build_path(junctions, origin, destination):
         (destination[1], destination[0])
     ).meters
     return Relationship(junctions[str(origin)], CONNECTS_TO, junctions[str(destination)], length=length)
+
+
+def _build_shortest_path_edges(transaction):
+    transaction.evaluate(
+        """
+        MATCH p=shortestPath((r1:Restaurant)-[*..25]->(r2:Restaurant)) WHERE r1.name <> r2.name 
+        MERGE (r1)-[:shortest_path_to {total_length:reduce(acc=0, c IN relationships(p) | acc + c.length)}]->(r2)
+        RETURN count(p)
+        """
+    )
