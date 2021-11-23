@@ -2,6 +2,7 @@ import os
 
 from flask import Blueprint, jsonify
 from pymongo import MongoClient
+import markdown
 
 client = MongoClient(os.environ.get('MONGO_URI'))
 db = client.test
@@ -38,6 +39,11 @@ def get_restaurant_types():
     restaurant_types = list(db.restaurant_types_view.distinct('title'))
     return jsonify(restaurant_types), 200
 
+@views.route('/readme')
+def get_readme():
+    with open('requete-readme.md') as f:
+        readme = f.read()
+    return markdown.markdown(readme), 200
 
 def _fetch_restaurant_types():
     restaurant_types = list(db.restaurant_types_view.find())
