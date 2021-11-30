@@ -8,7 +8,7 @@
 * ### @GET /heartbeat
     * Payload : Aucun.
     * Retour:
-        - villeChoisie: le nom de la ville choisie pour votre projet.   
+        - villeChoisie: le nom de la ville choisie dans laquelle on souhaite générer un parcours.   
   ```
   {
       "villeChoisie": str
@@ -17,8 +17,8 @@
 * ### @GET /extracted_data
     * Payload : Aucun.
     * Retour:
-        - nbRestaurants: le nombre de restaurants nbRestaurants contenu dans votre base de données
-        - nbSegments: le nombre de segments nbSegments dans votre base de données 
+        - nbRestaurants: le nombre de restaurants nbRestaurants contenu dans la base de données
+        - nbSegments: le nombre de segments nbSegments dans la base de données 
 ```
   {
       "nbRestaurants":int,
@@ -30,8 +30,8 @@
 * ### @GET /transformed_data
     * Payload : Aucun.
     * Retour:
-        - restaurants: contient le nombre de restaurant par type dans votre BD de points de restaurants transformés
-        - longueurCyclable : la valeur numérique qui contient la longueur totale des chemins pouvant être utilisés dans votre application
+        - restaurants: contient le nombre de restaurant par type dans la base de données de points de restaurants transformés
+        - longueurCyclable : la valeur numérique qui contient la longueur totale des chemins pouvant être utilisés dans l'application
 ```
   {
       "restaurants":{
