@@ -2,6 +2,7 @@ import os
 from flask import Blueprint, jsonify, request
 from py2neo import Graph
 from pymongo import MongoClient
+import markdown
 
 DEFAULT_NB_STOPS = 10
 CHOSEN_CITY = {'villeChoisie': "Montreal"}
@@ -45,6 +46,13 @@ def get_restaurant_types():
     return jsonify(restaurant_types), 200
 
 
+
+@views.route('/readme')
+def get_readme():
+    with open('README.md', encoding="utf-8") as f:
+        readme = f.read()
+        return markdown.markdown(readme, extensions=['fenced_code']), 200
+
 @views.route('/starting_point')
 def get_starting_point():
     query = _build_starting_point_query(
@@ -58,6 +66,7 @@ def get_starting_point():
             'coordinates': [starting_point['long'], starting_point['lat']]
         }
     }), 200
+
 
 
 def _fetch_restaurant_types():
