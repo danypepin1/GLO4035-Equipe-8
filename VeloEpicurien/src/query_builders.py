@@ -2,7 +2,11 @@ DEFAULT_NB_STOPS = 10
 
 
 def build_starting_point_query(length, types):
-    query = 'MATCH p=((starting_point:Junction)-[c1:connects_to]->(r1:Restaurant)'
+    query = 'MATCH (r1:Restaurant)\n'
+    if len(types) > 0:
+        query += f'WHERE ANY(type in {str(types)} WHERE type in r1.types)\n'
+
+    query += 'MATCH p=((starting_point:Junction)-[c1:connects_to]->(r1)'
     for i in range(2, DEFAULT_NB_STOPS + 1):
         query += f'-[c{i}:shortest_path_to]->(r{i}:Restaurant)'
     query += ')\n'
@@ -17,18 +21,12 @@ def build_starting_point_query(length, types):
             query += f'AND r{i}.name <> r{j}.name '
         query += '\n'
 
-    if len(types) > 0:
-        query += f'AND ANY(r IN [r1'
-        for i in range(2, DEFAULT_NB_STOPS + 1):
-            query += f', r{i}'
-        query += f'] WHERE ANY(type in {str(types)} WHERE type in r.types))\n'
-
     query += 'RETURN starting_point, r1'
     for i in range(2, DEFAULT_NB_STOPS + 1):
         query += f', r{i}'
     query += ' LIMIT 1'
 
-    print(f'[QUERY]\n{query}')
+    print(f'[QUERY]\n{query}\n')
     return query
 
 
@@ -65,5 +63,5 @@ def build_itinerary_query(nb_stops, restaurant_ids, length):
 
     query += '\nLIMIT 1'
 
-    print(f'[QUERY]\n{query}')
+    print(f'[QUERY]\n{query}\n')
     return query

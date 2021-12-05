@@ -75,11 +75,11 @@ def get_starting_point():
 def _validate_starting_point_params(json):
     error = ''
     if 'length' not in json:
-        error += 'Must include parameters "type"\n'
+        error += 'Must include parameter "length"\n'
     elif not (isinstance(json['length'], int) or isinstance(json['length'], float)):
         error += 'Parameter "length" must be a number\n'
     if 'type' not in json:
-        error += 'Must include parameters "length"\n'
+        error += 'Must include parameter "type"\n'
     else:
         if not (isinstance(json['type'], list)):
             error += 'Parameter "type" must be a list\n'
@@ -99,6 +99,8 @@ def get_itinerary():
     query = build_starting_point_query(length, types)
     cursor = graph.run(query)
     cursor.forward()
+    if not cursor.current:
+        return 'The provided restaurant types were not found', 404
     query = build_itinerary_query(
         number_of_stops,
         [cursor.current[f'r{i}'].identity for i in range(1, number_of_stops + 1)],
@@ -154,13 +156,13 @@ def _validate_itinerary_params(json):
     if not (isinstance(json['startingPoint'], dict)):
         error += 'Parameter "startingPoint" must be a dictionary\n'
     if 'length' not in json:
-        error += 'Must include parameters "type"\n'
+        error += 'Must include parameter "length"\n'
     elif not (isinstance(json['length'], int) or isinstance(json['length'], float)):
         error += 'Parameter "length" must be a number\n'
     if not (isinstance(json['numberOfStops'], int)):
         error += 'Parameter "numberOfStops" must be an integer\n'
     if 'type' not in json:
-        error += 'Must include parameters "length"\n'
+        error += 'Must include parameter "type"\n'
     else:
         if not (isinstance(json['type'], list)):
             error += 'Parameter "type" must be a list\n'
