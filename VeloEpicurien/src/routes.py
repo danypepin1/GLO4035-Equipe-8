@@ -1,4 +1,5 @@
 import os
+import markdown
 from flask import Blueprint, jsonify, request
 from py2neo import Graph
 from pymongo import MongoClient
@@ -43,6 +44,13 @@ def transformed_data():
 def get_restaurant_types():
     restaurant_types = list(db.restaurant_types_view.distinct('title'))
     return jsonify(restaurant_types), 200
+
+
+@views.route('/readme')
+def get_readme():
+    with open('README.md', encoding="utf-8") as f:
+        readme = f.read()
+        return markdown.markdown(readme, extensions=['fenced_code']), 200
 
 
 @views.route('/starting_point')
