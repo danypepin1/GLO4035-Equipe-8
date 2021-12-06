@@ -49,7 +49,7 @@ def build_itinerary_query(nb_stops, restaurant_ids, length):
     for i in range(2, nb_stops):
         query += f', p{i}'
 
-    query += f'\nWHERE {length * 0.9} < l1'
+    query += f'\nWHERE l1'
     for i in range(2, nb_stops):
         query += f' + l{i}'
     query += f' < {length * 1.1}\n'

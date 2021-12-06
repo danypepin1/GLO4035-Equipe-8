@@ -3,6 +3,7 @@ from geopy.distance import distance
 from py2neo import Graph, Node, Relationship, Subgraph
 
 CONNECTS_TO = 'connects_to'
+WALKS_TO = 'walks_to'
 JUNCTION = 'Junction'
 RESTAURANT = 'Restaurant'
 
@@ -72,8 +73,8 @@ def _build_junction_nodes(mongodb):
 def _build_restaurant_path_edges(mongodb, restaurants, junctions):
     restaurant_paths = []
     for restaurant_node in restaurants:
-        junction_node, length = _find_closest_junction(mongodb, restaurant_node, junctions)
-        restaurant_paths += _build_restaurant_paths(restaurant_node, junction_node, length)
+        junction_node = _find_closest_junction(mongodb, restaurant_node, junctions)
+        restaurant_paths += _build_restaurant_paths(restaurant_node, junction_node)
     return restaurant_paths
 
 
@@ -86,13 +87,13 @@ def _find_closest_junction(mongodb, restaurant, junctions):
         {'$limit': 1}
     ]).next()
     coordinates = closest_junction['geometry']['coordinates']
-    return junctions[str([coordinates[0], coordinates[1]])], closest_junction['distance']
+    return junctions[str([coordinates[0], coordinates[1]])]
 
 
-def _build_restaurant_paths(restaurant, junction, length):
+def _build_restaurant_paths(restaurant, junction):
     return [
-        Relationship(restaurant, CONNECTS_TO, junction, length=length),
-        Relationship(junction, CONNECTS_TO, restaurant, length=length)
+        Relationship(restaurant, WALKS_TO, junction),
+        Relationship(junction, WALKS_TO, restaurant)
     ]
 
 
@@ -117,17 +118,9 @@ def _build_path(junctions, origin, destination):
 def _build_shortest_path_edges(transaction):
     transaction.evaluate(
         """
-        MATCH (r1:Restaurant)-->(j1:Junction), p=shortestPath((j1)-[*..25]->(j2)), (j2:Junction)-->(r2:Restaurant)
-        WHERE r1 <> r2 AND j1 <> j2
-        WITH r1, r2, reduce(acc=0, c IN relationships(p) | acc + c.length) AS len
-        WHERE len is not null
-        MERGE (r1)-[:shortest_path_to {total_length: len}]->(r2)
-        """
-    )
-    transaction.evaluate(
-        """
-        MATCH (r1:Restaurant)-->(:Junction)<--(r2:Restaurant)
+        MATCH p=shortestPath((r1:Restaurant)-[*..30]->(r2:Restaurant))
         WHERE r1 <> r2
-        MERGE (r1)-[:shortest_path_to {total_length: 0}]->(r2)
+        WITH r1, r2, reduce(acc=0, r IN relationships(p) | acc + coalesce(r.length, 0)) AS len
+        MERGE (r1)-[:shortest_path_to {total_length: len}]->(r2)
         """
     )
