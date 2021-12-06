@@ -102,30 +102,18 @@ def get_itinerary():
 def _build_itinerary_geojson(result, number_of_stops, types):
     features = []
     for i in range(1, number_of_stops):
-        path = result[f'p{i}']
-        restaurant = path.start_node
-        features.append(_build_restaurant_geojson(restaurant, types))
-        segment = []
-        for relationship in path.relationships:
-            end_node = relationship.end_node
-            if JUNCTION in end_node.labels:
-                segment.append(
-                    [end_node['long'], end_node['lat']]
-                )
-        if len(segment) > 1:
-            features.append({
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'MultiLineString',
-                    'coordinates': [segment]
-                },
-                'properties': {
-                    'length': result[f'l{i}']
-                }
-            })
-    path = result[f'p{number_of_stops - 1}']
-    restaurant = path.end_node
-    features.append(_build_restaurant_geojson(restaurant, types))
+        features.append(_build_restaurant_geojson(result[f'r{i}'], types))
+        features.append({
+            'type': 'Feature',
+            'geometry': {
+                'type': 'MultiLineString',
+                'coordinates': [[[node['long'], node['lat']] for node in result[f'p{i}'].nodes]]
+            },
+            'properties': {
+                'length': result[f'l{i}']
+            }
+        })
+    features.append(_build_restaurant_geojson(result[f'r{number_of_stops}'], types))
     return {'type': 'FeatureCollection', 'features': features}
 
 

@@ -92,8 +92,8 @@ def _find_closest_junction(mongodb, restaurant, junctions):
 
 def _build_restaurant_paths(restaurant, junction):
     return [
-        Relationship(restaurant, WALKS_TO, junction),
-        Relationship(junction, WALKS_TO, restaurant)
+        Relationship(restaurant, WALKS_TO, junction, length=0),
+        Relationship(junction, WALKS_TO, restaurant, length=0)
     ]
 
 
@@ -118,8 +118,9 @@ def _build_path(junctions, origin, destination):
 def _build_shortest_path_edges(transaction):
     transaction.evaluate(
         """
-        MATCH p=shortestPath((r1:Restaurant)-[*..30]->(r2:Restaurant))
-        WHERE r1 <> r2
+        MATCH p=shortestPath((r1:Restaurant)-[*..30]->(r2:Restaurant)),
+        (r1)-->(j1:Junction), (r2)-->(j2:Junction)
+        WHERE r1 <> r2 AND j1 <> j2
         WITH r1, r2, reduce(acc=0, r IN relationships(p) | acc + coalesce(r.length, 0)) AS len
         MERGE (r1)-[:shortest_path_to {total_length: len}]->(r2)
         """
