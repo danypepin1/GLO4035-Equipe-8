@@ -72,35 +72,23 @@ def get_starting_point():
     }), 200
 
 
-def _validate_starting_point_params(json):
-    error = ''
-    if 'length' not in json:
-        error += 'Must include parameter "length"\n'
-    elif not (isinstance(json['length'], int) or isinstance(json['length'], float)):
-        error += 'Parameter "length" must be a number\n'
-    if 'type' not in json:
-        error += 'Must include parameter "type"\n'
-    else:
-        if not (isinstance(json['type'], list)):
-            error += 'Parameter "type" must be a list\n'
-        if not all(isinstance(t, str) for t in json['type']):
-            error += 'Parameter "type" must be a list of strings\n'
-    return error
-
-
 @views.route('/parcours')
 def get_itinerary():
     error = _validate_itinerary_params(request.json)
     if error:
         return error, 400
     length = request.json['length']
+    if length > _fetch_segments_length():
+        return 'Cannot create an itinerary of the provided length', 404
     types = request.json['type']
+    if any(t not in _fetch_restaurant_types().keys() for t in types):
+        return 'The provided restaurant types were not found', 404
     number_of_stops = request.json['numberOfStops']
     query = build_starting_point_query(length, types)
     cursor = graph.run(query)
     cursor.forward()
     if not cursor.current:
-        return 'The provided restaurant types were not found', 404
+        return 'Could not find a valid itinerary', 404
     query = build_itinerary_query(
         number_of_stops,
         [cursor.current[f'r{i}'].identity for i in range(1, number_of_stops + 1)],
@@ -113,23 +101,10 @@ def get_itinerary():
 
 def _build_itinerary_geojson(result, number_of_stops, types):
     features = []
-    for i in range(1, number_of_stops + 1):
+    for i in range(1, number_of_stops):
         path = result[f'p{i}']
         restaurant = path.start_node
-        features.append({
-            'type': 'Feature',
-            'geometry': {
-                'type': 'Point',
-                'coordinates': [
-                    restaurant['long'],
-                    restaurant['lat']
-                ]
-            },
-            'properties': {
-                'name': restaurant['name'],
-                'type': _get_correct_type(restaurant['types'], types)
-            }
-        })
+        features.append(_build_restaurant_geojson(restaurant, types))
         segment = []
         for relationship in path.relationships:
             end_node = relationship.end_node
@@ -148,7 +123,43 @@ def _build_itinerary_geojson(result, number_of_stops, types):
                     'length': result[f'l{i}']
                 }
             })
+    path = result[f'p{number_of_stops - 1}']
+    restaurant = path.end_node
+    features.append(_build_restaurant_geojson(restaurant, types))
     return {'type': 'FeatureCollection', 'features': features}
+
+
+def _build_restaurant_geojson(restaurant, types):
+    return {
+        'type': 'Feature',
+        'geometry': {
+            'type': 'Point',
+            'coordinates': [
+                restaurant['long'],
+                restaurant['lat']
+            ]
+        },
+        'properties': {
+            'name': restaurant['name'],
+            'type': _get_correct_type(restaurant['types'], types)
+        }
+    }
+
+
+def _validate_starting_point_params(json):
+    error = ''
+    if 'length' not in json:
+        error += 'Must include parameter "length"\n'
+    elif not (isinstance(json['length'], int) or isinstance(json['length'], float)):
+        error += 'Parameter "length" must be a number\n'
+    if 'type' not in json:
+        error += 'Must include parameter "type"\n'
+    else:
+        if not (isinstance(json['type'], list)):
+            error += 'Parameter "type" must be a list\n'
+        if not all(isinstance(t, str) for t in json['type']):
+            error += 'Parameter "type" must be a list of strings\n'
+    return error
 
 
 def _validate_itinerary_params(json):

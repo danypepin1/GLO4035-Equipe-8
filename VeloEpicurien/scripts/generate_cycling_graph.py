@@ -2,7 +2,6 @@ import os
 from geopy.distance import distance
 from py2neo import Graph, Node, Relationship, Subgraph
 
-BIDIRECTIONAL = 2
 CONNECTS_TO = 'connects_to'
 JUNCTION = 'Junction'
 RESTAURANT = 'Restaurant'
@@ -103,8 +102,7 @@ def _build_path_edges(mongodb, junctions):
         points = segment['geometry']['coordinates'][0]
         for i in range(len(points) - 1):
             paths.append(_build_path(junctions, points[i], points[i + 1]))
-            if segment['properties']['NBR_VOIE'] == BIDIRECTIONAL:
-                paths.append(_build_path(junctions, points[i + 1], points[i]))
+            paths.append(_build_path(junctions, points[i + 1], points[i]))
     return paths
 
 
@@ -119,8 +117,17 @@ def _build_path(junctions, origin, destination):
 def _build_shortest_path_edges(transaction):
     transaction.evaluate(
         """
-        MATCH p=shortestPath((r1:Restaurant)-[*..25]->(r2:Restaurant)) WHERE r1.name <> r2.name 
-        MERGE (r1)-[:shortest_path_to {total_length:reduce(acc=0, c IN relationships(p) | acc + c.length)}]->(r2)
-        RETURN count(p)
+        MATCH (r1:Restaurant)-->(j1:Junction), p=shortestPath((j1)-[*..25]->(j2)), (j2:Junction)-->(r2:Restaurant)
+        WHERE r1 <> r2 AND j1 <> j2
+        WITH r1, r2, reduce(acc=0, c IN relationships(p) | acc + c.length) AS len
+        WHERE len is not null
+        MERGE (r1)-[:shortest_path_to {total_length: len}]->(r2)
+        """
+    )
+    transaction.evaluate(
+        """
+        MATCH (r1:Restaurant)-->(:Junction)<--(r2:Restaurant)
+        WHERE r1 <> r2
+        MERGE (r1)-[:shortest_path_to {total_length: 0}]->(r2)
         """
     )

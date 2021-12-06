@@ -13,6 +13,8 @@ def extract_segments(db, path):
         segments = json.load(f)['features']
         for segment in segments:
             segment['hashcode'] = _encode_string(str(segment['geometry']['coordinates']))
+            for coordinate in segment['geometry']['coordinates'][0]:
+                coordinate[0], coordinate[1] = round(coordinate[0], 6), round(coordinate[1], 6)
         db.segments.create_index('hashcode', unique=True)
         try:
             db.segments.insert_many(segments, ordered=False)
