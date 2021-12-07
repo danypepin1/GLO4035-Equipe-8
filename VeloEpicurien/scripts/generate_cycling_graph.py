@@ -1,11 +1,13 @@
 import os
+from string import ascii_uppercase
+
 from geopy.distance import distance
 from py2neo import Graph, Node, Relationship, Subgraph
 
-BIDIRECTIONAL = 2
 CONNECTS_TO = 'connects_to'
 JUNCTION = 'Junction'
 RESTAURANT = 'Restaurant'
+WALKING_DISTANCE = 400
 
 
 def generate_cycling_graph(mongodb):
@@ -16,6 +18,8 @@ def generate_cycling_graph(mongodb):
         transaction = graph.begin()
         _generate_cycling_graph(mongodb, transaction)
         graph.commit(transaction)
+        print('- Creating shortest path edges...')
+        _build_shortest_path_edges(graph)
         print('Finished generating cycling graph.')
 
 
@@ -45,8 +49,6 @@ def _generate_cycling_graph(mongodb, transaction):
         nodes=list(junctions.values()) + restaurants,
         relationships=paths + restaurant_paths
     ))
-    print('- Creating shortest path edges...')
-    _build_shortest_path_edges(transaction)
 
 
 def _build_restaurant_nodes(mongodb):
@@ -74,7 +76,8 @@ def _build_restaurant_path_edges(mongodb, restaurants, junctions):
     restaurant_paths = []
     for restaurant_node in restaurants:
         junction_node, length = _find_closest_junction(mongodb, restaurant_node, junctions)
-        restaurant_paths += _build_restaurant_paths(restaurant_node, junction_node, length)
+        if length < WALKING_DISTANCE:
+            restaurant_paths += _build_restaurant_paths(restaurant_node, junction_node)
     return restaurant_paths
 
 
@@ -90,10 +93,10 @@ def _find_closest_junction(mongodb, restaurant, junctions):
     return junctions[str([coordinates[0], coordinates[1]])], closest_junction['distance']
 
 
-def _build_restaurant_paths(restaurant, junction, length):
+def _build_restaurant_paths(restaurant, junction):
     return [
-        Relationship(restaurant, CONNECTS_TO, junction, length=length),
-        Relationship(junction, CONNECTS_TO, restaurant, length=length)
+        Relationship(restaurant, CONNECTS_TO, junction, length=0),
+        Relationship(junction, CONNECTS_TO, restaurant, length=0)
     ]
 
 
@@ -103,8 +106,7 @@ def _build_path_edges(mongodb, junctions):
         points = segment['geometry']['coordinates'][0]
         for i in range(len(points) - 1):
             paths.append(_build_path(junctions, points[i], points[i + 1]))
-            if segment['properties']['NBR_VOIE'] == BIDIRECTIONAL:
-                paths.append(_build_path(junctions, points[i + 1], points[i]))
+            paths.append(_build_path(junctions, points[i + 1], points[i]))
     return paths
 
 
@@ -116,11 +118,16 @@ def _build_path(junctions, origin, destination):
     return Relationship(junctions[str(origin)], CONNECTS_TO, junctions[str(destination)], length=length)
 
 
-def _build_shortest_path_edges(transaction):
-    transaction.evaluate(
-        """
-        MATCH p=shortestPath((r1:Restaurant)-[*..25]->(r2:Restaurant)) WHERE r1.name <> r2.name 
-        MERGE (r1)-[:shortest_path_to {total_length:reduce(acc=0, c IN relationships(p) | acc + c.length)}]->(r2)
-        RETURN count(p)
-        """
-    )
+def _build_shortest_path_edges(graph):
+    for char in ascii_uppercase:
+        graph.evaluate(
+            f"""
+            MATCH p=shortestPath((r1:Restaurant)-[:connects_to*..20]->(r2:Restaurant))
+            WHERE r1.name > r2.name
+            AND r1.name STARTS WITH '{char}'
+            WITH r1, r2, reduce(acc=0, r IN relationships(p) | acc + coalesce(r.length, 0)) AS len
+            MERGE (r1)-[:shortest_path_to {{total_length: len}}]->(r2)
+            MERGE (r2)-[:shortest_path_to {{total_length: len}}]->(r1)
+            RETURN count(*)
+            """
+        )

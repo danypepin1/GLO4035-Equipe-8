@@ -8,7 +8,7 @@ from scripts.generate_cycling_graph import generate_cycling_graph
 
 def extract_restaurants(db, path):
     print('Extracting restaurants...')
-    with open(path) as f:
+    with open(path, encoding='utf8') as f:
         restaurants = json.load(f)
         db.restaurants.create_index('id', unique=True)
         try:
