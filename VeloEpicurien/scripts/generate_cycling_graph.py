@@ -119,7 +119,6 @@ def _build_path(junctions, origin, destination):
 
 
 def _build_shortest_path_edges(graph):
-
     for char in ascii_uppercase:
         graph.evaluate(
             f"""

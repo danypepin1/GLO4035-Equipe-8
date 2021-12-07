@@ -58,9 +58,7 @@ def get_starting_point():
     error = _validate_starting_point_params(request.json)
     if error:
         return error, 400
-    length = request.json['length']
-    types = request.json['type']
-    query = build_starting_point_query(length, types)
+    query = build_starting_point_query(request.json['length'], request.json['type'])
     cursor = graph.run(query)
     cursor.forward()
     starting_point = cursor.current['starting_point']
@@ -74,28 +72,19 @@ def get_starting_point():
 
 @views.route('/parcours')
 def get_itinerary():
-    error = _validate_itinerary_params(request.json)
+    error, code = _validate_itinerary_params(request.json)
     if error:
-        return error, 400
-    length = request.json['length']
-    if length > _fetch_segments_length():
-        return 'Cannot create an itinerary of the provided length', 404
-    types = request.json['type']
-    if any(t not in _fetch_restaurant_types().keys() for t in types):
-        return 'The provided restaurant types were not found', 404
-    number_of_stops = request.json['numberOfStops']
-    query = build_starting_point_query(length, types)
+        return error, code
+    query = build_starting_point_query(request.json['length'], request.json['type'])
     cursor = graph.run(query)
     cursor.forward()
-    if not cursor.current:
-        return 'Could not find a valid itinerary', 404
     query = build_itinerary_query(
-        number_of_stops,
-        [cursor.current[f'r{i}'].identity for i in range(1, number_of_stops + 1)]
+        request.json['numberOfStops'],
+        [cursor.current[f'r{i}'].identity for i in range(1, request.json['numberOfStops'] + 1)]
     )
     cursor = graph.run(query)
     cursor.forward()
-    return jsonify(_build_itinerary_geojson(cursor.current, number_of_stops, types)), 200
+    return jsonify(_build_itinerary_geojson(cursor.current, request.json['numberOfStops'], request.json['type'])), 200
 
 
 def _build_itinerary_geojson(result, number_of_stops, types):
@@ -155,20 +144,16 @@ def _validate_itinerary_params(json):
     error = ''
     if not (isinstance(json['startingPoint'], dict)):
         error += 'Parameter "startingPoint" must be a dictionary\n'
-    if 'length' not in json:
-        error += 'Must include parameter "length"\n'
-    elif not (isinstance(json['length'], int) or isinstance(json['length'], float)):
-        error += 'Parameter "length" must be a number\n'
     if not (isinstance(json['numberOfStops'], int)):
         error += 'Parameter "numberOfStops" must be an integer\n'
-    if 'type' not in json:
-        error += 'Must include parameter "type"\n'
-    else:
-        if not (isinstance(json['type'], list)):
-            error += 'Parameter "type" must be a list\n'
-        if not all(isinstance(t, str) for t in json['type']):
-            error += 'Parameter "type" must be a list of strings\n'
-    return error
+    error += _validate_starting_point_params(json)
+    if error:
+        return error, 400
+    if request.json['length'] > _fetch_segments_length():
+        return 'Cannot create an itinerary of the provided length', 404
+    if any(t not in _fetch_restaurant_types().keys() for t in request.json['type']):
+        return 'The provided restaurant types were not found', 404
+    return '', 200
 
 
 def _get_correct_type(restaurant_types, wanted_types):
