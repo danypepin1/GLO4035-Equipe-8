@@ -14,5 +14,6 @@ COPY app.py app.py
 COPY datasets datasets
 COPY scripts scripts
 COPY src src
+COPY README.md README.md
 
 CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
