@@ -42,8 +42,8 @@ def transformed_data():
 
 @views.route('/type')
 def get_restaurant_types():
-    restaurant_types = list(db.restaurant_types_view.distinct('title'))
-    return jsonify(restaurant_types), 200
+    restaurant_types = {key: value for (key, value) in _fetch_restaurant_types().items() if value > 20}
+    return jsonify(sorted(list(restaurant_types.keys()))), 200
 
 
 @views.route('/readme')
@@ -91,8 +91,7 @@ def get_itinerary():
         return 'Could not find a valid itinerary', 404
     query = build_itinerary_query(
         number_of_stops,
-        [cursor.current[f'r{i}'].identity for i in range(1, number_of_stops + 1)],
-        length
+        [cursor.current[f'r{i}'].identity for i in range(1, number_of_stops + 1)]
     )
     cursor = graph.run(query)
     cursor.forward()
@@ -103,16 +102,18 @@ def _build_itinerary_geojson(result, number_of_stops, types):
     features = []
     for i in range(1, number_of_stops):
         features.append(_build_restaurant_geojson(result[f'r{i}'], types))
-        features.append({
-            'type': 'Feature',
-            'geometry': {
-                'type': 'MultiLineString',
-                'coordinates': [[[node['long'], node['lat']] for node in result[f'p{i}'].nodes]]
-            },
-            'properties': {
-                'length': result[f'l{i}']
-            }
-        })
+        coordinates = [[node['long'], node['lat']] for node in result[f'p{i}'].nodes][1:-1]
+        if len(coordinates) > 1:
+            features.append({
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'MultiLineString',
+                    'coordinates': [coordinates]
+                },
+                'properties': {
+                    'length': result[f'l{i}']
+                }
+            })
     features.append(_build_restaurant_geojson(result[f'r{number_of_stops}'], types))
     return {'type': 'FeatureCollection', 'features': features}
 
