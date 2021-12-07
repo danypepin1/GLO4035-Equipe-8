@@ -1,5 +1,6 @@
 import os
 import markdown
+import time
 from flask import Blueprint, jsonify, request
 from py2neo import Graph
 from pymongo import MongoClient
@@ -10,11 +11,18 @@ CHOSEN_CITY = {'villeChoisie': "Montreal"}
 
 client = MongoClient(os.environ.get('MONGO_URI'))
 db = client.test
-graph = Graph(
-    os.environ.get('NEO4J_URI'),
-    auth=(os.environ.get('NEO4J_USERNAME'), os.environ.get('NEO4J_PASSWORD')),
-    secure=False
-)
+graph = None
+while True:
+    try:
+        graph = Graph(
+            os.environ.get('NEO4J_URI'),
+            auth=(os.environ.get('NEO4J_USERNAME'), os.environ.get('NEO4J_PASSWORD')),
+            secure=False
+        )
+        break
+    except Exception:
+        print('Could not connect to neo4j, retrying...')
+        time.sleep(3)
 
 views = Blueprint('views', __name__)
 
